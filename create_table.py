@@ -9,7 +9,8 @@ if __name__ == '__main__':
     cur = conn.cursor()
 
     # setup table column dtypes
-    columns = {'asin': 'bigint PRIMARY KEY',
+    columns = {'id': 'serial PRIMARY KEY',
+               'asin': 'text',
                'helpful': 'int[]',
                'overall': 'numeric',
                'reviewText': 'text',
@@ -17,7 +18,7 @@ if __name__ == '__main__':
                'reviewerID': 'text',
                'reviewerName': 'text',
                'summary': 'text',
-               'unixReviewTime': 'bigint'}
+               'unixReviewTime': 'int'}
 
     # create table
     query = f'CREATE TABLE IF NOT EXISTS reviews ({",".join(f"{k} {v}" for k,v in columns.items())});'
