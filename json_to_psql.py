@@ -16,8 +16,7 @@ from etc.types import PsycopgCursor
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Save json file to external DB.')
-    parser.add_argument('-f', '--fpath', type=str, help='json file to save to
-                        PSQL', required=True)
+    parser.add_argument('-f', '--fpath', type=str, help='json file to save to PSQL', required=True)
     parser.add_argument('-n', '--name', type=str, help='name of table to save to',
                         required=True)
     parser.add_argument('-s', '--schema', type=str, help='json file of table schema',
@@ -61,13 +60,13 @@ if __name__ == '__main__':
     args = parse_args()
 
     # setup db connection
-    with f as open(args.connection_params):
+    with open(args.connection_params) as f:
         psql_params = json.loads(f.read())
     conn = get_db_connection(psql_params)
     cur = conn.cursor()
 
     # get table schema
-    with f as open(args.schema):
+    with open(args.schema) as f:
         schema = json.loads(f.read())
 
     # create table
@@ -75,7 +74,7 @@ if __name__ == '__main__':
     cur.execute(query)
 
     # save elements in batches of batch_size
-    columns = schema.keys()
+    columns = [k for k,v in schema.items() if "serial" not in v.lower()]
     batch_size = 100
     batch_num = 0
     i, elements = 0, []
@@ -84,13 +83,13 @@ if __name__ == '__main__':
             elements.append(el)
             i += 1
         else:
-            insert_json_into_psql('reviews', columns, elements, cur)
+            insert_json_into_psql(args.name, columns, elements, cur)
             batch_num += 1
             logging.info(f'Batch {batch_num} successfully saved to DB.')
             i, elements = 0, []
 
     # save last chunk if remainders
     if len(elements) > 0:
-        insert_json_into_psql('reviews', columns, elements, cur)
+        insert_json_into_psql(args.name, columns, elements, cur)
 
     logging.info(f'{batch_num * batch_size + len(elements)} elements succesfully saved to DB.')
