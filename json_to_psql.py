@@ -34,7 +34,10 @@ def lazyload_json_file(fpath: str=None)->Generator[str, dict, str]:
     """
     f = open(fpath)
     for jsonline in f:
-        yield json.loads(jsonline)
+        el = json.loads(jsonline)
+
+        # strip trailing NUL characters from text
+        yield {k:(v.strip() if type(v)==str else v) for (k,v) in el.items()}
 
     return 'JSON file exhausted.'
 
