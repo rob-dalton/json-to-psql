@@ -1,5 +1,6 @@
 #!/bin/bash python
 
+import argparse
 import os
 import psycopg2
 import json
@@ -12,6 +13,20 @@ from psycopg2.extras import execute_values
 from etc.get_db_connection import get_db_connection
 from etc.logging import initialize_logging
 from etc.types import PsycopgCursor
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Save json file to external DB.')
+    parser.add_argument('-f', '--fpath', type=str, help='json file to save to
+                        PSQL', required=True)
+    parser.add_argument('-n', '--name', type=str, help='name of table to save to',
+                        required=True)
+    parser.add_argument('-s', '--schema', type=str, help='json file of table schema',
+                        required=True)
+    parser.add_argument('-c', '--connection_params', type=str, help='json file of psql connection parameters',
+                        default='psql_default_params.json')
+
+    return parser.parse_args()
+
 
 def lazyload_json_file(fpath: str=None)->Generator[str, dict, str]:
     """
@@ -43,21 +58,28 @@ def insert_json_into_psql(table: str, columns: List[str], json_elements: List[di
 if __name__ == '__main__':
     initialize_logging()
 
-    # setup vars
-    json_fpath = '/Users/robertdalton/web-projects/subjective-objective/data/reviews_Office_Products_5.json'
-    columns = ['reviewerID', 'asin', 'reviewerName',
-               'helpful', 'reviewText', 'overall',
-               'summary', 'unixReviewTime', 'reviewTime']
+    args = parse_args()
 
-    # setup psql cursor
-    conn = get_db_connection()
+    # setup db connection
+    with f as open(args.connection_params):
+        psql_params = json.loads(f.read())
+    conn = get_db_connection(psql_params)
     cur = conn.cursor()
 
+    # get table schema
+    with f as open(args.schema):
+        schema = json.loads(f.read())
+
+    # create table
+    query = f'CREATE TABLE IF NOT EXISTS {args.name} ({",".join(f"{k} {v}" for k,v in schema.items())});'
+    cur.execute(query)
+
     # save elements in batches of batch_size
+    columns = schema.keys()
     batch_size = 100
     batch_num = 0
     i, elements = 0, []
-    for el in lazyload_json_file(json_fpath):
+    for el in lazyload_json_file(args.fpath):
         if i < batch_size:
             elements.append(el)
             i += 1
