@@ -86,9 +86,15 @@ if __name__ == '__main__':
             elements.append(el)
             i += 1
         else:
-            insert_json_into_psql(args.name, columns, elements, cur)
+            try:
+                insert_json_into_psql(args.name, columns, elements, cur)
+            except ValueError:
+                # skip batches with NUL characters - causes fatal error, cannot save to psql
+                logging.error('Skipping batch {batch_num}. NUL character (\0x00) found.'
+            else:
+                logging.info(f'Batch {batch_num} successfully saved to DB.')
+
             batch_num += 1
-            logging.info(f'Batch {batch_num} successfully saved to DB.')
             i, elements = 0, []
 
     # save last chunk if remainders
